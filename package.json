@@ -8,7 +8,9 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
-    "clean": "pnpm -r clean"
+    "clean": "pnpm -r clean",
+    "setup": "pnpm install && pnpm build",
+    "demo": "echo '🚀 Qwen Paperclip Demo' && npx qwen-paperclip status"
   },
   "keywords": [
     "qwen",
@@ -16,7 +18,9 @@
     "ai-agent",
     "oauth",
     "heartbeat",
-    "orchestration"
+    "orchestration",
+    "zero-api",
+    "qwen-code"
   ],
   "author": "",
   "license": "MIT",

@@ -193,6 +193,7 @@ export class QwenAgent extends EventEmitter {
           } catch {
             // Se não for JSON válido, tratar como texto
             resolve({
+              sessionId: uuidv4(),
               content: output,
               toolCalls: [],
               stats: {
@@ -200,7 +201,8 @@ export class QwenAgent extends EventEmitter {
                 outputTokens: 0,
                 totalTokens: 0,
                 toolCalls: 0
-              }
+              },
+              completedAt: new Date()
             });
           }
         } else {

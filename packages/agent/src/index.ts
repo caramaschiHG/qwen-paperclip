@@ -7,5 +7,5 @@
  */
 
 export { QwenAgent } from './QwenAgent.js';
-export { QwenAgentConfig } from './types.js';
+export { QwenAgentConfig, Task, AgentStatus, TaskResult, ToolCall, UsageStats, EventLog } from './types.js';
 export { QwenSession } from './session.js';

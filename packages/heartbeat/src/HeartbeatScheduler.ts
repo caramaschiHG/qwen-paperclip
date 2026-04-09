@@ -195,7 +195,7 @@ export class HeartbeatScheduler extends EventEmitter {
             success: false,
             error: errorMessage,
             attempts,
-            memoryState: context?.memoryState || {}
+            memoryState: heartbeat.config.initialMemoryState || {}
           };
 
           this.logEvent('beat_failed', `Beat ${beatId} failed after ${attempts} attempts: ${errorMessage}`);
