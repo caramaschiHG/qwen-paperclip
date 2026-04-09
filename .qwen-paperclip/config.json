@@ -1,0 +1,31 @@
+{
+  "name": "my-ai-company",
+  "version": "0.1.0",
+  "agents": [
+    {
+      "id": "agent_ceo",
+      "name": "CEO Agent",
+      "workingDirectory": "/home/caramaschi/Área de trabalho/Projetos/A(i)gency/qwen-paperclip",
+      "approvalMode": "yolo",
+      "outputFormat": "json",
+      "role": "ceo",
+      "createdAt": "2026-04-09T21:23:14.779Z"
+    }
+  ],
+  "heartbeats": [
+    {
+      "id": "hb_ceo",
+      "agentId": "agent_ceo",
+      "schedule": 300,
+      "maxRetries": 3,
+      "enabled": true,
+      "createdAt": "2026-04-09T21:23:14.779Z"
+    }
+  ],
+  "settings": {
+    "approvalMode": "yolo",
+    "outputFormat": "json",
+    "logLevel": "info"
+  },
+  "createdAt": "2026-04-09T21:23:14.779Z"
+}
