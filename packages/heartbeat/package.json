@@ -1,0 +1,27 @@
+{
+  "name": "@qwen-paperclip/heartbeat",
+  "version": "0.1.0",
+  "description": "Sistema de heartbeat e agendamento para agentes Qwen",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "cron-parser": "^4.9.0",
+    "events": "^3.3.0",
+    "@qwen-paperclip/agent": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0",
+    "eslint": "^8.56.0"
+  },
+  "keywords": ["heartbeat", "scheduler", "paperclip", "agent"],
+  "author": "",
+  "license": "MIT"
+}

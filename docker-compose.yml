@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # PostgreSQL embarcado (padrão do Paperclip)
+  postgres:
+    image: postgres:16-alpine
+    container_name: qwen-paperclip-db
+    environment:
+      POSTGRES_DB: paperclip
+      POSTGRES_USER: paperclip
+      POSTGRES_PASSWORD: paperclip_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paperclip"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Qwen Paperclip API
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: qwen-paperclip-api
+    environment:
+      DATABASE_URL: postgresql://paperclip:paperclip_secret@postgres:5432/paperclip
+      NODE_ENV: production
+      PORT: 3100
+    ports:
+      - "3100:3100"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - qwen_cache:/root/.qwen
+      - ./projects:/app/projects
+
+  # Dashboard UI
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    container_name: qwen-paperclip-dashboard
+    environment:
+      API_URL: http://api:3100
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  qwen_cache:

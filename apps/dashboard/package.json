@@ -1,0 +1,29 @@
+{
+  "name": "@qwen-paperclip/dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Dashboard de monitoramento para agentes Qwen no Paperclip",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "@qwen-paperclip/agent": "workspace:*",
+    "@qwen-paperclip/heartbeat": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.2.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.12",
+    "eslint": "^8.56.0"
+  },
+  "keywords": ["dashboard", "monitor", "qwen", "paperclip"],
+  "author": "",
+  "license": "MIT"
+}

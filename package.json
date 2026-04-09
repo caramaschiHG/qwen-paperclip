@@ -1,0 +1,28 @@
+{
+  "name": "qwen-paperclip",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Integração do Qwen Code com OAuth local como agente nativo do Paperclip",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "clean": "pnpm -r clean"
+  },
+  "keywords": [
+    "qwen",
+    "paperclip",
+    "ai-agent",
+    "oauth",
+    "heartbeat",
+    "orchestration"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.15.0"
+  },
+  "packageManager": "pnpm@9.15.0"
+}
