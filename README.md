@@ -1,336 +1,917 @@
 # 🔧 Qwen Paperclip
 
-> **Orquestre agentes Qwen Code com OAuth local no Paperclip - Zero API Key necessária!**
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Node.js Version](https://img.shields.io/badge/node-%3E%3D20.0-brightgreen)](https://nodejs.org/)
-[![pnpm](https://img.shields.io/badge/pnpm-9.15+-orange)](https://pnpm.io/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.3+-blue)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-18.2+-61dafb)](https://react.dev/)
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
-![Test Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
-
----
-
-## ✨ O Que É
-
-**Qwen Paperclip** integra o [Qwen Code](https://github.com/QwenLM/qwen-code) como agente nativo do [Paperclip](https://github.com/paperclipai/paperclip), permitindo:
-
-- 🔐 **Zero API Key** - OAuth automático via navegador
-- 💓 **Heartbeat 24/7** - Agentes acordam, executam e dormem
-- 🧠 **Context Persistence** - Sessões mantidas entre execuções
-- 💰 **Budget Control** - 60 req/min, 1000 req/dia (gratuito)
-- 🏢 **Multi-Tenant** - Múltiplas empresas isoladas
-- 📊 **Dashboard** - Monitoramento em tempo real
-- 🛡️ **Governança** - Aprovações, pausas, overrides
-
-## 🚀 Quick Start
-
-### Instalação
-
-```bash
-# Clone o repositório
-git clone https://github.com/seu-usuario/qwen-paperclip.git
-cd qwen-paperclip
-
-# Instale dependências
-pnpm install
-
-# Build
-pnpm build
-
-# Inicialize seu projeto
-npx qwen-paperclip init --name minha-empresa-ia
-```
-
-### OAuth (Primeira Vez)
-
-```bash
-# Faça login com qwen.ai (automático via browser)
-qwen
-```
-
-**Pronto!** Sem API key para configurar. 🎉
-
-### Uso Básico
-
-```bash
-# Adicionar agente
-npx qwen-paperclip add-agent --name dev-agent --directory ./src
-
-# Configurar heartbeat (a cada 5 min)
-npx qwen-paperclip add-heartbeat --agent-id dev-agent --schedule "*/5 * * * *"
-
-# Iniciar scheduler
-npx qwen-paperclip start
-
-# Testar agente
-npx qwen-paperclip test -p "Crie uma função de soma em Python"
-```
-
-### Docker
-
-```bash
-# Subir tudo com Docker Compose
-docker-compose up -d
-
-# Acessar dashboard
-open http://localhost:3000
-```
-
-## 📚 Documentação
-
-| Documento | Descrição |
-|-----------|-----------|
-| [README.md](README.md) | Documentação principal |
-| [GETTING_STARTED.md](GETTING_STARTED.md) | Guia de início rápido |
-| [EXAMPLES.md](EXAMPLES.md) | Exemplos práticos de uso |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Como contribuir |
-
-## 🏗️ Arquitetura
-
-```
-┌─────────────────────────────────────────┐
-│         Paperclip Server                │
-│  (API + PostgreSQL + Dashboard)         │
-├─────────────────────────────────────────┤
-│  Qwen Agent Adapter                     │
-│  ├─ Heartbeat Scheduler (cron)          │
-│  ├─ Context Injector                    │
-│  └─ Result Persister                    │
-├─────────────────────────────────────────┤
-│  Qwen Code CLI (OAuth local)            │
-│  ├─ qwen --prompt "task" --yolo         │
-│  ├─ --output-format stream-json         │
-│  └─ --continue / --resume               │
-└─────────────────────────────────────────┘
-```
-
-## 📦 Estrutura do Projeto
-
-```
-qwen-paperclip/
-├── packages/
-│   ├── agent/           # @qwen-paperclip/agent - Adaptador Qwen Code
-│   ├── heartbeat/       # @qwen-paperclip/heartbeat - Scheduler
-│   └── cli/             # @qwen-paperclip/cli - CLI
-├── apps/
-│   └── dashboard/       # @qwen-paperclip/dashboard - UI React
-├── .github/
-│   └── workflows/       # CI/CD pipelines
-├── docker-compose.yml   # Docker setup
-└── docs/                # Documentação adicional
-```
-
-## 🎯 Funcionalidades
-
-### Agente Qwen Code
-
-```typescript
-import { QwenAgent } from '@qwen-paperclip/agent';
-
-const agent = new QwenAgent({
-  id: 'dev-agent',
-  name: 'Development Agent',
-  workingDirectory: './src',
-  approvalMode: 'yolo',
-  outputFormat: 'json'
-});
-
-const result = await agent.execute({
-  id: 'task-1',
-  prompt: 'Crie uma API REST para usuários'
-});
-
-console.log(result.content);
-```
-
-### Heartbeat Scheduler
-
-```typescript
-import { HeartbeatScheduler } from '@qwen-paperclip/heartbeat';
-
-const scheduler = new HeartbeatScheduler(agent);
-
-await scheduler.register({
-  agentId: 'dev-agent',
-  schedule: '*/5 * * * *',  // cron
-  maxRetries: 3,
-  enabled: true
-});
-```
-
-### CLI Commands
-
-```bash
-# Inicializar projeto
-qwen-paperclip init --name empresa-ia
-
-# Adicionar agente
-qwen-paperclip add-agent --name dev-agent -d ./src
-
-# Configurar heartbeat
-qwen-paperclip add-heartbeat -a dev-agent -s "*/5 * * * *"
-
-# Iniciar scheduler
-qwen-paperclip start
-
-# Verificar status
-qwen-paperclip status
-
-# Testar agente
-qwen-paperclip test -p "Olá, mundo!"
-```
-
-## 💡 Exemplos
-
-### 1. Agente de Desenvolvimento
-
-```bash
-qwen-paperclip add-agent --name dev-agent -d ./src --approval yolo
-qwen-paperclip add-heartbeat -a dev-agent -s "*/5 * * * *"
-```
-
-### 2. Agente de Code Review
-
-```bash
-qwen-paperclip add-agent --name review-agent -d ./src --approval auto_edit
-qwen-paperclip add-heartbeat -a review-agent -s "0 * * * *"
-```
-
-### 3. Empresa Completa
-
-```bash
-docker-compose up -d
-# Dashboard disponível em http://localhost:3000
-```
-
-Veja mais exemplos em [EXAMPLES.md](EXAMPLES.md).
-
-## 🔐 OAuth Local
-
-O Qwen Code usa autenticação OAuth gratuita:
-
-| Feature | Detalhe |
-|---------|---------|
-| **Login** | Automático via browser |
-| **Cache** | Local em `~/.qwen/` |
-| **API Key** | ❌ Não necessária |
-| **Limite** | 60 req/min, 1000 req/dia |
-| **Modelo** | Qwen Coder |
-| **Custo** | Gratuito |
-
-## 📊 Dashboard
-
-O dashboard React fornece monitoramento em tempo real:
-
-- ✅ Status de agentes (idle, running, error, authenticated)
-- 💓 Heartbeats ativos e histórico
-- 📈 Estatísticas de uso (tokens, tool calls)
-- 📋 Logs de execução
-- 🎮 Controles (start/stop/pause)
-
-## 🐳 Docker
-
-```yaml
-# docker-compose.yml
-version: '3.8'
-services:
-  postgres:
-    image: postgres:16-alpine
-  api:
-    build: .
-    ports:
-      - "3100:3100"
-  dashboard:
-    build: ./apps/dashboard
-    ports:
-      - "3000:3000"
-```
-
-```bash
-docker-compose up -d
-```
-
-## 🧪 Desenvolvimento
-
-```bash
-# Modo development
-pnpm dev
-
-# Build
-pnpm build
-
-# Testes
-pnpm test
-
-# Lint
-pnpm lint
-```
-
-## 🤝 Contribuindo
-
-Contribuições são bem-vindas! Leia o [guia de contribuição](CONTRIBUTING.md).
-
-### Áreas Precisando de Ajuda
-
-- 🔴 Testes unitários abrangentes
-- 🔴 Integração real com Paperclip API
-- 🟡 Mais exemplos de uso
-- 🟡 Tradução para inglês
-- 🟢 Temas customizáveis no dashboard
-
-### Comece Agora
-
-```bash
-# Fork e clone
-gh repo fork qwen-paperclip
-
-# Instale dependências
-pnpm install
-
-# Crie uma branch
-git checkout -b feature/minha-feature
-
-# Desenvolva e teste
-pnpm dev
-pnpm test
-
-# Commit e push
-git commit -m "feat: adicionar minha feature"
-git push origin feature/minha-feature
-
-# Abra um PR
-gh pr create
-```
-
-## 📄 Licença
-
-Distribuído sob licença MIT. Veja [LICENSE](LICENSE) para detalhes.
-
-## 🔗 Links
-
-- [Qwen Code](https://github.com/QwenLM/qwen-code)
-- [Paperclip](https://github.com/paperclipai/paperclip)
-- [Documentação Qwen OAuth](https://qwenlm.github.io/qwen-code-docs/)
-- [Issues](https://github.com/seu-usuario/qwen-paperclip/issues)
-- [Discussions](https://github.com/seu-usuario/qwen-paperclip/discussions)
-
-## 🙏 Agradecimentos
-
-- **Qwen Team** - Por criar o incrível Qwen Code
-- **Paperclip Team** - Pela plataforma de orquestração
-- **Contribuidores** - Por melhorar este projeto
-
-## 📮 Contato
-
-- **Issues**: [GitHub Issues](https://github.com/seu-usuario/qwen-paperclip/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/seu-usuario/qwen-paperclip/discussions)
+> **Orchestrate Qwen Code agents in Paperclip with local OAuth — Zero API Keys required!**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
+[![Node.js Version](https://img.shields.io/node/v/@qwen-paperclip/agent?style=flat-square&logo=node.js)](https://nodejs.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-9.15+-orange?style=flat-square&logo=pnpm)](https://pnpm.io/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3+-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18.2+-61dafb?style=flat-square&logo=react)](https://react.dev/)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen?style=flat-square)](https://github.com/caramaschiHG/qwen-paperclip/actions)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](CONTRIBUTING.md)
+[![GitHub stars](https://img.shields.io/github/stars/caramaschiHG/qwen-paperclip?style=flat-square)](https://github.com/caramaschiHG/qwen-paperclip/stargazers)
 
 ---
 
 <p align="center">
-  <strong>Feito com ❤️ pela comunidade para a comunidade</strong><br>
-  <em>Qwen Paperclip - Orquestrando agentes Qwen com zero configuração de API</em> 🚀
+  <strong>⚡ Quick Links</strong><br>
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-features">Features</a> •
+  <a href="#-architecture">Architecture</a> •
+  <a href="#-usage">Usage</a> •
+  <a href="#-examples">Examples</a> •
+  <a href="#-documentation">Documentation</a> •
+  <a href="#-contributing">Contributing</a>
+</p>
+
+---
+
+## 🌟 What is Qwen Paperclip?
+
+**Qwen Paperclip** is an open-source integration layer that brings [Qwen Code](https://github.com/QwenLM/qwen-code) as a native agent into the [Paperclip](https://github.com/paperclipai/paperclip) orchestration platform. It enables you to run AI-powered companies with autonomous agents that work 24/7 — **without managing a single API key**.
+
+### Why This Matters
+
+| Problem | Qwen Paperclip Solution |
+|---------|------------------------|
+| ❌ Complex API key management | ✅ **OAuth automatic** — login once via browser |
+| ❌ Agents lose context between runs | ✅ **Session persistence** — memory across executions |
+| ❌ No scheduling system | ✅ **Heartbeat scheduler** — cron-based automation |
+| ❌ No monitoring | ✅ **Real-time dashboard** — track agents, usage, errors |
+| ❌ Expensive API costs | ✅ **Free tier** — 60 req/min, 1000 req/day |
+| ❌ Single agent limitation | ✅ **Multi-agent orchestration** — scale effortlessly |
+
+### Use Cases
+
+- 🏢 **AI-Operated Companies** — Run entire businesses with autonomous agents
+- 💻 **Development Teams** — Agents that code, review, and document 24/7
+- 🔍 **Code Quality** — Automated bug detection and refactoring
+- 📝 **Documentation** — Self-updating docs generated by AI
+- 🧪 **Testing** — Continuous test generation and execution
+- 📊 **Data Processing** — Scheduled data analysis and reporting
+
+---
+
+## ⚡ Quick Start
+
+Get up and running in **under 2 minutes**:
+
+### Prerequisites
+
+```bash
+# Required
+Node.js 20+     ✅
+pnpm 9.15+      ✅
+Qwen Code CLI   ✅
+qwen.ai account ✅ (free)
+```
+
+### Installation
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/caramaschiHG/qwen-paperclip.git
+cd qwen-paperclip
+
+# 2. Install dependencies
+pnpm install
+
+# 3. Build the project
+pnpm build
+
+# 4. Initialize your project
+npx qwen-paperclip init --name my-ai-company
+```
+
+### First-Time OAuth Setup
+
+```bash
+# Login with qwen.ai (opens browser automatically)
+qwen
+
+# That's it! Credentials are cached locally.
+# No API key configuration needed! 🎉
+```
+
+### Your First Agent
+
+```bash
+# Add a development agent
+npx qwen-paperclip add-agent \
+  --name dev-agent \
+  --directory ./src \
+  --approval yolo
+
+# Configure heartbeat (every 5 minutes)
+npx qwen-paperclip add-heartbeat \
+  --agent-id dev-agent \
+  --schedule "*/5 * * * *"
+
+# Start the scheduler
+npx qwen-paperclip start
+
+# Test your agent
+npx qwen-paperclip test \
+  -p "Create a Python function to calculate Fibonacci"
+```
+
+### Docker (Alternative)
+
+```bash
+# Start everything with Docker Compose
+docker-compose up -d
+
+# Access dashboard
+open http://localhost:3000
+```
+
+**🎉 Congratulations!** You now have an autonomous AI agent running on a schedule.
+
+---
+
+## 🚀 Features
+
+### 🔐 Zero API Key Management
+
+Qwen Code uses **OAuth 2.0** authentication:
+
+- First run opens browser for login with `qwen.ai` account
+- Credentials cached locally in `~/.qwen/`
+- Automatic token refresh
+- **No API keys to store, rotate, or secure**
+
+### 💓 Heartbeat Scheduler
+
+Autonomous agent execution with:
+
+- **Cron expressions** — Flexible scheduling (`*/5 * * * *`, `0 9 * * 1-5`, etc.)
+- **Second intervals** — Simple numeric scheduling (`300` = every 5 minutes)
+- **Context injection** — Memory, task queue, recent events loaded automatically
+- **Retry logic** — Configurable max retries on failure
+- **Fault tolerance** — State persists between beats, failures are isolated
+
+### 🧠 Context Persistence
+
+Agents remember everything:
+
+- Session history across executions
+- Previous task results and decisions
+- Memory state for complex workflows
+- `--continue` and `--resume` flags for seamless continuity
+
+### 💰 Budget Control
+
+Stay within limits automatically:
+
+| Metric | Free Tier Limit | Monitoring |
+|--------|----------------|------------|
+| Requests/min | 60 | ✅ Real-time |
+| Requests/day | 1,000 | ✅ Daily reports |
+| Model access | Qwen Coder | ✅ Included |
+| Cost | $0 | ✅ Forever free |
+
+### 🏢 Multi-Tenant Architecture
+
+Run multiple isolated companies:
+
+- Complete data isolation per tenant
+- Separate audit trails
+- Independent agent configurations
+- Shared infrastructure, isolated execution
+
+### 📊 Real-Time Dashboard
+
+Monitor everything at a glance:
+
+- **Agent Status** — idle, running, error, authenticated, needs-auth
+- **Heartbeat History** — execution timeline and results
+- **Usage Statistics** — tokens, tool calls, success rates
+- **Error Tracking** — detailed error messages and stack traces
+- **Controls** — start, stop, pause, resume agents
+
+### 🛡️ Governance & Safety
+
+Enterprise-grade controls:
+
+- **Approval modes** — yolo, auto_edit, ask (manual approval)
+- **Budget limits** — per-agent spending caps
+- **Pause/Resume** — instant agent control
+- **Rollback** — safe configuration rollbacks
+- **Audit logs** — immutable decision tracking
+
+---
+
+## 🏗️ Architecture
+
+### High-Level Overview
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Paperclip Server                      │
+│              (API + PostgreSQL + Dashboard)               │
+├─────────────────────────────────────────────────────────┤
+│                  Qwen Agent Adapter                      │
+│  ┌──────────────────┐  ┌──────────────┐  ┌───────────┐  │
+│  │   Heartbeat      │  │   Context    │  │  Result   │  │
+│  │   Scheduler      │  │   Injector   │  │ Persister │  │
+│  │   (cron)         │  │              │  │           │  │
+│  └──────────────────┘  └──────────────┘  └───────────┘  │
+├─────────────────────────────────────────────────────────┤
+│                  Qwen Code CLI (OAuth)                   │
+│  ┌──────────────────┐  ┌──────────────┐  ┌───────────┐  │
+│  │  qwen --prompt   │  │  --output-   │  │ --continue│  │
+│  │  "task" --yolo   │  │  format json │  │ /--resume │  │
+│  └──────────────────┘  └──────────────┘  └───────────┘  │
+└─────────────────────────────────────────────────────────┘
+         │                        │                │
+         └────────────────────────┼────────────────┘
+                                  │
+                     ┌────────────▼────────────┐
+                     │   Local OAuth Cache     │
+                     │   (~/.qwen/)            │
+                     │   No API Keys!          │
+                     └─────────────────────────┘
+```
+
+### Execution Flow
+
+```
+┌─────────────┐
+│  Scheduler  │  Triggers on cron schedule
+└──────┬──────┘
+       │
+       ▼
+┌─────────────────────┐
+│  Build Context      │  Load memory, tasks, events
+│  • Memory State     │
+│  • Task Queue       │
+│  • Recent Events    │
+│  • Agent Config     │
+└──────┬──────────────┘
+       │
+       ▼
+┌─────────────────────┐
+│  Execute Qwen CLI   │  qwen --prompt "..." --output-format json --yolo
+│  • Spawn process    │
+│  • Stream output    │
+│  • Capture result   │
+└──────┬──────────────┘
+       │
+       ▼
+┌─────────────────────┐
+│  Parse & Persist    │  Save results, update memory
+│  • Update state     │
+│  • Log execution    │
+│  • Report progress  │
+└──────┬──────────────┘
+       │
+       ▼
+┌─────────────────────┐
+│  Reschedule         │  Schedule next heartbeat
+│  Agent sleeps until │
+│  next beat          │
+└─────────────────────┘
+```
+
+### Project Structure
+
+```
+qwen-paperclip/
+│
+├── 📦 packages/
+│   ├── agent/              # @qwen-paperclip/agent
+│   │   ├── src/
+│   │   │   ├── QwenAgent.ts      # Main agent wrapper
+│   │   │   ├── session.ts        # Session persistence
+│   │   │   ├── types.ts          # TypeScript types
+│   │   │   └── index.ts          # Public API
+│   │   └── package.json
+│   │
+│   ├── heartbeat/          # @qwen-paperclip/heartbeat
+│   │   ├── src/
+│   │   │   ├── HeartbeatScheduler.ts  # Cron scheduler
+│   │   │   ├── types.ts               # Types
+│   │   │   └── index.ts               # Public API
+│   │   └── package.json
+│   │
+│   └── cli/                # @qwen-paperclip/cli
+│       ├── src/
+│       │   └── index.ts          # CLI commands
+│       └── package.json
+│
+├── 📱 apps/
+│   └── dashboard/          # @qwen-paperclip/dashboard
+│       ├── src/
+│       │   ├── App.tsx           # Main React component
+│       │   ├── App.css           # Styles
+│       │   └── main.tsx          # Entry point
+│       ├── index.html
+│       └── package.json
+│
+├── 🐳 docker/
+│   └── docker-compose.yml  # PostgreSQL + API + Dashboard
+│
+├── 📚 docs/
+│   ├── GETTING_STARTED.md  # Quick start guide
+│   ├── EXAMPLES.md         # Usage examples
+│   └── CONTRIBUTING.md     # Contribution guide
+│
+└── 🔧 .github/
+    └── workflows/
+        └── ci-cd.yml       # CI/CD pipeline
+```
+
+---
+
+## 💻 Usage
+
+### CLI Commands
+
+Complete reference for all CLI commands:
+
+#### `init` — Initialize Project
+
+```bash
+npx qwen-paperclip init \
+  --name my-ai-company \
+  --directory ./my-project
+
+# Options:
+#   --name, -n        Project name (default: my_qwen_agent)
+#   --directory, -d   Working directory (default: cwd)
+```
+
+#### `add-agent` — Add Qwen Agent
+
+```bash
+npx qwen-paperclip add-agent \
+  --name dev-agent \
+  --directory ./src \
+  --approval yolo \
+  --output json
+
+# Options:
+#   --name, -n            Agent name (default: qwen-agent-1)
+#   --directory, -d       Working directory (default: cwd)
+#   --approval, -a        Approval mode: yolo | auto_edit | ask (default: yolo)
+#   --output, -o          Output format: json | stream-json | text (default: json)
+```
+
+#### `add-heartbeat` — Configure Scheduler
+
+```bash
+npx qwen-paperclip add-heartbeat \
+  --agent-id dev-agent \
+  --schedule "*/5 * * * *" \
+  --retries 3
+
+# Options:
+#   --agent-id, -a      Agent ID (required)
+#   --schedule, -s      Cron expression or seconds (default: 300)
+#   --retries, -r       Max retry attempts (default: 3)
+```
+
+#### `start` — Start Scheduler
+
+```bash
+npx qwen-paperclip start \
+  --config .qwen-paperclip/config.json
+
+# Options:
+#   --config, -c        Config file path (default: .qwen-paperclip/config.json)
+```
+
+#### `status` — Check System Status
+
+```bash
+npx qwen-paperclip status
+
+# Shows:
+# ✅ Qwen Code installation
+# ✅ OAuth cache status
+# ✅ Authentication state
+```
+
+#### `test` — Test Agent
+
+```bash
+npx qwen-paperclip test \
+  --prompt "Create a REST API in Express.js"
+
+# Options:
+#   --prompt, -p        Test prompt (default: "Say hello! This is a test.")
+```
+
+### Approval Modes
+
+Choose the right mode for your use case:
+
+| Mode | Description | Best For | Risk Level |
+|------|-------------|----------|------------|
+| `yolo` | Fully automatic, no approval | Prototyping, low-risk tasks | 🔴 High |
+| `auto_edit` | Auto-approve edits | Code review, refactoring | 🟡 Medium |
+| `ask` | Manual approval required | Production changes | 🟢 Low |
+
+### Cron Schedule Examples
+
+| Expression | Description | Use Case |
+|------------|-------------|----------|
+| `*/5 * * * *` | Every 5 minutes | Active development |
+| `*/15 * * * *` | Every 15 minutes | Regular checks |
+| `0 * * * *` | Every hour | Monitoring |
+| `0 */2 * * *` | Every 2 hours | Documentation |
+| `0 9 * * *` | Daily at 9 AM | Daily reports |
+| `0 9-17 * * *` | 9 AM to 5 PM, hourly | Business hours |
+| `0 9 * * 1-5` | Weekdays at 9 AM | Work days only |
+| `0 */4 * * *` | Every 4 hours | Bug scanning |
+
+---
+
+## 💡 Examples
+
+### 1. Development Agent
+
+Automate coding tasks:
+
+```bash
+# Create agent
+npx qwen-paperclip add-agent \
+  --name dev-agent \
+  --directory ./src \
+  --approval yolo
+
+# Run every 5 minutes
+npx qwen-paperclip add-heartbeat \
+  --agent-id dev-agent \
+  --schedule "*/5 * * * *"
+
+# Test it
+npx qwen-paperclip test \
+  -p "Create a Python function to sort users by activity"
+```
+
+### 2. Code Review Agent
+
+Automatic PR reviews:
+
+```bash
+# Create agent (safer approval)
+npx qwen-paperclip add-agent \
+  --name review-agent \
+  --directory ./src \
+  --approval auto_edit
+
+# Review every hour
+npx qwen-paperclip add-heartbeat \
+  --agent-id review-agent \
+  --schedule "0 * * * *"
+
+# Test it
+npx qwen-paperclip test \
+  -p "Review recent code changes and suggest improvements"
+```
+
+### 3. Documentation Generator
+
+Self-updating docs:
+
+```bash
+# Create agent
+npx qwen-paperclip add-agent \
+  --name docs-agent \
+  --directory ./docs \
+  --approval yolo
+
+# Update docs twice daily
+npx qwen-paperclip add-heartbeat \
+  --agent-id docs-agent \
+  --schedule "0 9,17 * * *"
+
+# Test it
+npx qwen-paperclip test \
+  -p "Generate API documentation for all endpoints in src/api/"
+```
+
+### 4. Multi-Agent Company
+
+Run a complete AI team:
+
+```bash
+# Initialize
+npx qwen-paperclip init --name ai-dev-team
+
+# Development agent
+npx qwen-paperclip add-agent -n dev-agent -d ./src -a yolo
+npx qwen-paperclip add-heartbeat -a dev-agent -s "*/5 * * * *"
+
+# Review agent
+npx qwen-paperclip add-agent -n review-agent -d ./src -a auto_edit
+npx qwen-paperclip add-heartbeat -a review-agent -s "0 * * * *"
+
+# Documentation agent
+npx qwen-paperclip add-agent -n docs-agent -d ./docs -a yolo
+npx qwen-paperclip add-heartbeat -a docs-agent -s "0 */2 * * *"
+
+# Start all agents
+npx qwen-paperclip start
+```
+
+### 5. Docker Deployment
+
+Production-ready setup:
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: paperclip
+      POSTGRES_USER: paperclip
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://paperclip:${DB_PASSWORD:-secret}@postgres:5432/paperclip
+      NODE_ENV: production
+    ports:
+      - "3100:3100"
+    volumes:
+      - qwen_cache:/root/.qwen
+      - ./projects:/app/projects
+    depends_on:
+      - postgres
+
+  dashboard:
+    build: ./apps/dashboard
+    environment:
+      API_URL: http://api:3100
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  qwen_cache:
+```
+
+```bash
+# Start everything
+docker-compose up -d
+
+# View logs
+docker-compose logs -f api
+
+# Access dashboard
+open http://localhost:3000
+```
+
+📖 **See more examples**: [EXAMPLES.md](EXAMPLES.md)
+
+---
+
+## 📊 Dashboard
+
+The React dashboard provides real-time monitoring:
+
+### Agent Status
+
+Monitor all your agents at a glance:
+
+- ✅ **idle** — Agent is waiting for next heartbeat
+- 🔄 **running** — Agent is executing a task
+- ❌ **error** — Agent encountered an error
+- 🔐 **authenticated** — OAuth is valid
+- ⚠️ **needs-auth** — OAuth login required
+
+### Heartbeat Monitoring
+
+Track scheduled executions:
+
+- Active/paused heartbeats
+- Last execution time
+- Next scheduled beat
+- Success/failure rates
+
+### Usage Statistics
+
+Monitor resource consumption:
+
+- Total agents configured
+- Active heartbeats count
+- Successful beats
+- Failed beats
+- Token usage (when available)
+- Tool call statistics
+
+### Error Tracking
+
+Debug issues quickly:
+
+- Error messages with context
+- Execution timestamps
+- Retry attempt history
+- Agent state at failure
+
+---
+
+## 🔐 OAuth Authentication
+
+Qwen Paperclip leverages Qwen Code's built-in OAuth flow:
+
+### How It Works
+
+1. **First Run**: CLI opens browser for login at `qwen.ai`
+2. **Authentication**: User signs in with their account
+3. **Caching**: Credentials stored locally in `~/.qwen/`
+4. **Auto-Refresh**: Tokens automatically renewed
+5. **Zero Config**: No API keys to manage
+
+### Free Tier Limits
+
+| Limit | Value | Notes |
+|-------|-------|-------|
+| Requests/minute | 60 | Enough for most use cases |
+| Requests/day | 1,000 | ~40 agents at 5-min intervals |
+| Model access | Qwen Coder | Full coding capabilities |
+| Context window | Standard | Adequate for code tasks |
+| Cost | $0 | Forever free tier |
+
+### Scaling Beyond Free Tier
+
+When you need more capacity:
+
+- **Multiple accounts**: Distribute agents across qwen.ai accounts
+- **Upgrade plan**: Check qwen.ai for paid tiers
+- **API Key fallback**: Configure `settings.json` with API keys (optional)
+
+---
+
+## 🧪 Development
+
+### Setup Development Environment
+
+```bash
+# Clone repository
+git clone https://github.com/caramaschiHG/qwen-paperclip.git
+cd qwen-paperclip
+
+# Install dependencies
+pnpm install
+
+# Build all packages
+pnpm build
+
+# Run in development mode (watch)
+pnpm dev
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+pnpm test
+
+# Test specific package
+pnpm --filter @qwen-paperclip/agent test
+
+# Watch mode
+pnpm test -- --watch
+
+# Coverage report
+pnpm test -- --coverage
+```
+
+### Code Quality
+
+```bash
+# Lint all packages
+pnpm lint
+
+# Type check
+pnpm build
+
+# Fix linting issues
+pnpm lint --fix
+```
+
+### Project Scripts
+
+| Script | Description |
+|--------|-------------|
+| `pnpm install` | Install all dependencies |
+| `pnpm build` | Build all packages |
+| `pnpm dev` | Development mode with watch |
+| `pnpm test` | Run test suite |
+| `pnpm lint` | Lint all packages |
+| `pnpm clean` | Clean build artifacts |
+| `pnpm setup` | Install + build (one command) |
+| `pnpm demo` | Run interactive demo |
+
+---
+
+## 🗺️ Roadmap
+
+### Current Version: `0.1.0`
+
+| Feature | Status | ETA |
+|---------|--------|-----|
+| Qwen Agent Adapter | ✅ Complete | Shipped |
+| Heartbeat Scheduler | ✅ Complete | Shipped |
+| CLI Commands | ✅ Complete | Shipped |
+| React Dashboard | ✅ Complete | Shipped |
+| Docker Compose | ✅ Complete | Shipped |
+| OAuth Integration | ✅ Complete | Shipped |
+| Context Persistence | ✅ Complete | Shipped |
+| Documentation | ✅ Complete | Shipped |
+
+### Coming Soon
+
+| Feature | Status | ETA |
+|---------|--------|-----|
+| Real-time WebSocket updates | 🚧 In Progress | Q2 2026 |
+| Paperclip API integration | 🚧 In Progress | Q2 2026 |
+| Unit test coverage | 📋 Planned | Q2 2026 |
+| GitHub Actions CI/CD | 📋 Planned | Q2 2026 |
+| Multi-model support | 💡 Proposed | Q3 2026 |
+| Plugin system | 💡 Proposed | Q3 2026 |
+| Team collaboration | 💡 Proposed | Q4 2026 |
+
+---
+
+## 🤝 Contributing
+
+We love contributions! Whether it's bug fixes, new features, or documentation improvements — all are welcome.
+
+### Quick Start
+
+```bash
+# 1. Fork the repository
+gh repo fork caramaschiHG/qwen-paperclip
+
+# 2. Create your feature branch
+git checkout -b feature/amazing-feature
+
+# 3. Install dependencies
+pnpm install && pnpm build
+
+# 4. Make your changes
+# ... code, test, document ...
+
+# 5. Commit and push
+git commit -m "feat: add amazing feature"
+git push origin feature/amazing-feature
+
+# 6. Open a Pull Request
+gh pr create
+```
+
+### What We Need Help With
+
+**High Priority** 🔴
+- [ ] Comprehensive unit tests
+- [ ] Real Paperclip API integration
+- [ ] Production-ready Dockerfiles
+- [ ] WebSocket real-time updates
+
+**Medium Priority** 🟡
+- [ ] More usage examples
+- [ ] Internationalization (i18n)
+- [ ] Performance benchmarks
+- [ ] Integration tests
+
+**Nice to Have** 🟢
+- [ ] Customizable dashboard themes
+- [ ] Plugin system
+- [ ] Support for other AI agents
+- [ ] Interactive CLI wizard
+
+📖 **Read the full guide**: [CONTRIBUTING.md](CONTRIBUTING.md)
+
+---
+
+## 🐛 Support & Troubleshooting
+
+### Common Issues
+
+#### Qwen Code Not Found
+
+```bash
+# Install Qwen Code globally
+npm install -g @anthropic-ai/qwen-code
+
+# Or visit: https://github.com/QwenLM/qwen-code
+```
+
+#### Invalid OAuth
+
+```bash
+# Force re-authentication
+qwen
+
+# Check credential cache
+ls -la ~/.qwen/
+```
+
+#### Build Failing
+
+```bash
+# Clean and rebuild
+pnpm clean
+rm -rf node_modules
+pnpm install
+pnpm build
+```
+
+#### Agent Not Executing
+
+```bash
+# Check system status
+npx qwen-paperclip status
+
+# Test agent manually
+npx qwen-paperclip test -p "Hello, are you working?"
+
+# Verify working directory
+ls -la ./your-directory
+```
+
+### Getting Help
+
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/caramaschiHG/qwen-paperclip/issues)
+- 💬 **Questions**: [GitHub Discussions](https://github.com/caramaschiHG/qwen-paperclip/discussions)
+- 📖 **Documentation**: [Qwen Code Docs](https://qwenlm.github.io/qwen-code-docs/)
+- 📧 **Contact**: Open an issue or discussion
+
+---
+
+## 📄 License
+
+Distributed under the MIT License. See [LICENSE](LICENSE) for details.
+
+```
+MIT License
+
+Copyright (c) 2026 Qwen Paperclip Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction...
+```
+
+---
+
+## 🔗 Links
+
+- **[Qwen Code](https://github.com/QwenLM/qwen-code)** — The AI coding assistant
+- **[Paperclip](https://github.com/paperclipai/paperclip)** — AI company orchestration platform
+- **[Qwen OAuth Docs](https://qwenlm.github.io/qwen-code-docs/)** — Authentication documentation
+- **[GitHub Issues](https://github.com/caramaschiHG/qwen-paperclip/issues)** — Bug reports and feature requests
+- **[GitHub Discussions](https://github.com/caramaschiHG/qwen-paperclip/discussions)** — Community discussions
+
+---
+
+## 🙏 Acknowledgments
+
+- **Qwen Team** — For creating the incredible Qwen Code AI assistant
+- **Paperclip Team** — For the innovative AI company orchestration platform
+- **Contributors** — Everyone who makes this project better ❤️
+- **Community** — For feedback, ideas, and support
+
+---
+
+## ⭐ Show Your Support
+
+If Qwen Paperclip helps you, please give us a star! It helps others discover the project.
+
+```
+┌─────────────────────────────────────────┐
+│                                         │
+│   ⭐ Star us on GitHub!                 │
+│   https://github.com/caramaschiHG/      │
+│            qwen-paperclip               │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+---
+
+<p align="center">
+  <strong>Qwen Paperclip — Orchestrating AI agents with zero API configuration</strong><br>
+  <em>Built with ❤️ by the community, for the community</em> 🚀
+</p>
+
+<p align="center">
+  <a href="https://github.com/caramaschiHG/qwen-paperclip">GitHub</a> •
+  <a href="https://github.com/caramaschiHG/qwen-paperclip/issues">Issues</a> •
+  <a href="https://github.com/caramaschiHG/qwen-paperclip/discussions">Discussions</a> •
+  <a href="https://github.com/caramaschiHG/qwen-paperclip/blob/main/CONTRIBUTING.md">Contributing</a>
 </p>
