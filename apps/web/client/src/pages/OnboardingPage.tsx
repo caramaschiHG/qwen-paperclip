@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Settings } from 'lucide-react';
 import { api } from '../services/api';
 
 interface OnboardingPageProps {
@@ -55,7 +56,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onComplete }) =>
     <div className="onboarding">
       <div className="onboarding-card">
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🔧</div>
+          <Settings size={48} style={{ marginBottom: 16, opacity: 0.3 }} />
           <h1 className="onboarding-title">Welcome to Qwen Paperclip</h1>
           <p className="onboarding-description">
             Let's set up your AI-operated company in a few simple steps
@@ -169,7 +170,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onComplete }) =>
                 onClick={handleSubmit}
                 disabled={loading}
               >
-                {loading ? 'Setting up...' : '🚀 Launch Company'}
+                {loading ? 'Setting up...' : 'Launch Company'}
               </button>
             </div>
           </>

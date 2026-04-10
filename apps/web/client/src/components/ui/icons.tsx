@@ -73,4 +73,10 @@ export {
   Radio,
   Wifi,
   WifiOff,
+  Briefcase,
+  Palette,
+  Shield,
+  Cog,
+  Megaphone,
+  Moon,
 } from 'lucide-react';

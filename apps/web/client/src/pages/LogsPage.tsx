@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { FileText } from '../components/ui/icons';
 import { api } from '../services/api';
 
 interface LogEntry {
@@ -119,7 +120,7 @@ export const LogsPage: React.FC = () => {
           <div className="card-body" style={{ padding: 0 }}>
             {paginatedLogs.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-state-icon">📝</div>
+                <FileText size={48} />
                 <div className="empty-state-title">No log entries found</div>
                 <div className="empty-state-description">
                   {logs.length === 0 ? 'Log entries will appear here as the system runs' : 'Try adjusting your filters'}

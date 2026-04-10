@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Settings } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
@@ -90,7 +90,7 @@ export function CompanyRail() {
     <div className="flex flex-col items-center w-[72px] shrink-0 h-screen bg-background border-r border-border">
       {/* Logo */}
       <div className="flex items-center justify-center h-12 w-full shrink-0">
-        <span className="text-lg font-bold">🔧</span>
+        <span className="text-lg font-bold"><Settings size={20} /></span>
       </div>
 
       {/* Companies */}

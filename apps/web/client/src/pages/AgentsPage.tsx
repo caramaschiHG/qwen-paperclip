@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { Users, UserPlus, X, Zap, Moon, Briefcase, Code2, Palette, Shield, Cog, Megaphone, BarChart3, Settings, CheckCircle2, XCircle, Circle } from '../components/ui/icons';
 import { api } from '../services/api';
 
 interface Agent {
@@ -59,15 +60,15 @@ export const AgentsPage: React.FC = () => {
     return hb;
   };
 
-  const roleIcons: Record<string, string> = {
-    'ceo': '👔',
-    'cto': '💻',
-    'senior-dev': '🔧',
-    'frontend': '🎨',
-    'qa': '🧪',
-    'devops': '⚙️',
-    'marketing': '📢',
-    'product': '📊',
+  const roleIcons: Record<string, React.FC<{ size?: number }>> = {
+    'ceo': Briefcase,
+    'cto': Code2,
+    'senior-dev': Settings,
+    'frontend': Palette,
+    'qa': Shield,
+    'devops': Cog,
+    'marketing': Megaphone,
+    'product': BarChart3,
   };
 
   const roleLabels: Record<string, string> = {
@@ -88,7 +89,9 @@ export const AgentsPage: React.FC = () => {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>🤖 Equipe</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Users size={24} /> Equipe
+          </h1>
           <p style={{ color: '#64748b', fontSize: 13, margin: '4px 0 0 0' }}>
             {agents.length} agentes • {agents.filter(a => a.status === 'running').length} trabalhando
           </p>
@@ -106,7 +109,7 @@ export const AgentsPage: React.FC = () => {
             cursor: 'pointer',
           }}
         >
-          {showForm ? '✕ Cancelar' : '+ Contratar Agente'}
+          {showForm ? <><X size={14} /> Cancelar</> : <><UserPlus size={14} /> Contratar Agente</>}
         </button>
       </div>
 
@@ -148,14 +151,14 @@ export const AgentsPage: React.FC = () => {
               }}
             >
               <option value="">Selecione uma função</option>
-              <option value="ceo">👔 CEO</option>
-              <option value="cto">💻 CTO</option>
-              <option value="senior-dev">🔧 Senior Developer</option>
-              <option value="frontend">🎨 Frontend Developer</option>
-              <option value="qa">🧪 QA Engineer</option>
-              <option value="devops">⚙️ DevOps</option>
-              <option value="marketing">📢 Marketing</option>
-              <option value="product">📊 Product Manager</option>
+              <option value="ceo">CEO</option>
+              <option value="cto">CTO</option>
+              <option value="senior-dev">Senior Developer</option>
+              <option value="frontend">Frontend Developer</option>
+              <option value="qa">QA Engineer</option>
+              <option value="devops">DevOps Engineer</option>
+              <option value="marketing">Marketing Specialist</option>
+              <option value="product">Product Manager</option>
             </select>
             <button
               onClick={handleHire}
@@ -204,9 +207,9 @@ export const AgentsPage: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 24,
+                  color: hbColor,
                 }}>
-                  {roleIcons[agent.role] || '🤖'}
+                  {React.createElement(roleIcons[agent.role] || Settings, { size: 24 })}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 15 }}>{agent.name}</div>
@@ -219,10 +222,13 @@ export const AgentsPage: React.FC = () => {
                   borderRadius: 6,
                   fontSize: 11,
                   fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
                   background: isRunning ? '#3b82f622' : '#334155',
                   color: isRunning ? '#60a5fa' : '#94a3b8',
                 }}>
-                  {isRunning ? '⚡ Ativo' : '💤 Ocioso'}
+                  {isRunning ? <><Zap size={12} /> Ativo</> : <><Moon size={12} /> Ocioso</>}
                 </div>
               </div>
 
@@ -254,7 +260,7 @@ export const AgentsPage: React.FC = () => {
       {/* Empty state */}
       {agents.length === 0 && (
         <div style={{ textAlign: 'center', padding: 60, color: '#64748b' }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🤖</div>
+          <Users size={48} style={{ marginBottom: 16, opacity: 0.3 }} />
           <h3 style={{ margin: '0 0 8px 0', color: '#94a3b8' }}>Nenhum agente contratado</h3>
           <p style={{ margin: 0, fontSize: 14 }}>Clique em "+ Contratar Agente" para montar seu time.</p>
         </div>
