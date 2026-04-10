@@ -26,7 +26,7 @@ router.get('/:id', (req: Request, res: Response) => {
 
 // ── POST /api/companies — create a company ───────────────────────────
 router.post('/', (req: Request, res: Response) => {
-  const { name, description } = req.body as { name?: string; description?: string };
+  const { name, description, workingDirectory } = req.body as { name?: string; description?: string; workingDirectory?: string };
 
   if (!name) {
     throw createApiError('Company name is required', 400);
@@ -37,6 +37,7 @@ router.post('/', (req: Request, res: Response) => {
     id: uuidv4(),
     name,
     description,
+    workingDirectory,
     createdAt: now,
     updatedAt: now,
   };
@@ -52,12 +53,13 @@ router.put('/:id', (req: Request, res: Response) => {
     throw createApiError('Company not found', 404);
   }
 
-  const { name, description } = req.body as { name?: string; description?: string };
+  const { name, description, workingDirectory } = req.body as { name?: string; description?: string; workingDirectory?: string };
 
   const updated: Company = {
     ...existing,
     ...(name !== undefined && { name }),
     ...(description !== undefined && { description }),
+    ...(workingDirectory !== undefined && { workingDirectory }),
     updatedAt: new Date().toISOString(),
   };
 

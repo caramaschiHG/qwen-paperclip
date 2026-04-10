@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings } from 'lucide-react';
+import { Settings, FolderOpen } from 'lucide-react';
 import { api } from '../services/api';
 
 interface OnboardingPageProps {
@@ -10,6 +10,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onComplete }) =>
   const [step, setStep] = useState(1);
   const [companyName, setCompanyName] = useState('');
   const [companyMission, setCompanyMission] = useState('');
+  const [workingDirectory, setWorkingDirectory] = useState('');
   const [agentName, setAgentName] = useState('CEO');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -22,7 +23,8 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onComplete }) =>
       // Step 1: Create company
       const company = await api.createCompany({
         name: companyName,
-        mission: companyMission,
+        description: companyMission,
+        workingDirectory: workingDirectory || undefined,
         status: 'active'
       });
 
@@ -99,6 +101,22 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onComplete }) =>
                 value={companyMission}
                 onChange={(e) => setCompanyMission(e.target.value)}
               />
+            </div>
+            <div className="form-group">
+              <label className="form-label">
+                <FolderOpen size={14} style={{ display: 'inline', marginRight: 4 }} />
+                Project Directory
+              </label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="/home/user/projects/my-project"
+                value={workingDirectory}
+                onChange={(e) => setWorkingDirectory(e.target.value)}
+              />
+              <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0 0' }}>
+                Onde os agentes vao criar/editar arquivos. Ex: /path/to/PsiLock
+              </p>
             </div>
             <button
               className="btn btn-primary"

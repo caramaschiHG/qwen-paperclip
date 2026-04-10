@@ -4,7 +4,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Loader2, CheckCircle2, XCircle, FileText, BarChart3, Flag, Clock } from '../components/ui/icons';
+import { ArrowLeft, Play, Loader2, CheckCircle2, XCircle, FileText, BarChart3, Flag, Clock, FolderOpen, AlertCircle } from '../components/ui/icons';
 import { api } from '../services/api';
 import { WorkflowTimeline } from '../components/WorkflowTimeline';
 
@@ -44,14 +44,26 @@ export const TaskDetailPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [polling, setPolling] = useState(false);
+  const [company, setCompany] = useState<{ name: string; workingDirectory?: string } | null>(null);
   const logOffsetRef = useRef(0);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const fetchData = useCallback(async () => {
     if (!id) return;
     try {
-      const taskData = await fetch(`/api/tasks/${id}`).then(r => r.json());
-      setTask(taskData.data || taskData);
+      const [taskData, companiesData] = await Promise.all([
+        fetch(`/api/tasks/${id}`).then(r => r.json()),
+        fetch('/api/companies').then(r => r.json()),
+      ]);
+      const t = taskData.data || taskData;
+      setTask(t);
+
+      // Find company
+      const companies = companiesData.data || [];
+      const taskCompany = companies.find((c: any) => c.id === t.companyId);
+      if (taskCompany) {
+        setCompany({ name: taskCompany.name, workingDirectory: taskCompany.workingDirectory });
+      }
 
       // Check for live run
       try {
@@ -187,6 +199,15 @@ export const TaskDetailPage: React.FC = () => {
             <div style={{ display: 'flex', gap: 12, fontSize: 13, color: '#64748b', alignItems: 'center' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><BarChart3 size={14} /> {task.status}</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Flag size={14} /> {task.priority}</span>
+              {company?.workingDirectory ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#22c55e' }}>
+                  <FolderOpen size={14} /> {company.workingDirectory}
+                </span>
+              ) : (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#ef4444' }}>
+                  <AlertCircle size={14} /> No project directory configured
+                </span>
+              )}
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={14} /> {timeAgo(task.createdAt)}</span>
             </div>
           </div>

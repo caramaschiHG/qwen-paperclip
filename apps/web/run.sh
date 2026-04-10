@@ -11,7 +11,7 @@ echo ""
 while true; do
   TIMESTAMP=$(date '+%H:%M:%S')
   echo "[$TIMESTAMP] Starting server..."
-  node dist/server/index.js 2>&1
+  tsx src/server/index.ts 2>&1
   
   EXIT_CODE=$?
   TIMESTAMP=$(date '+%H:%M:%S')

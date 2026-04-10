@@ -57,7 +57,15 @@ router.post('/:taskId/run', async (req: Request, res: Response) => {
 
   // Get company working directory
   const company = companies.get(task.companyId);
-  const workingDir = company ? process.cwd() : process.cwd();
+  const workingDir = company?.workingDirectory;
+
+  // BLOCK: Cannot run without a project directory
+  if (!workingDir) {
+    throw createApiError(
+      `Company "${company?.name || 'Unknown'}" does not have a Project Directory configured.`,
+      400
+    );
+  }
 
   // Update task status
   task.status = 'running';

@@ -177,6 +177,19 @@ router.post('/:id/run', async (req: Request, res: Response) => {
   agent.updatedAt = new Date().toISOString();
   agents.set(resolvedAgentId, agent);
 
+  // Resolve workingDirectory from company
+  const company = companies.get(task.companyId);
+  const workingDir = company?.workingDirectory;
+
+  // BLOCK: Cannot run without a project directory
+  if (!workingDir) {
+    throw createApiError(
+      `Company "${company?.name || 'Unknown'}" does not have a Project Directory configured. ` +
+      `Go to Companies and set the working directory before running tasks.`,
+      400
+    );
+  }
+
   // Start execution in background
   const { executor } = await import('../services/taskExecutor.js');
   const { addActivity } = await import('../services/activity.js');
@@ -200,6 +213,7 @@ router.post('/:id/run', async (req: Request, res: Response) => {
     agentName: agent.name,
     taskTitle: task.title,
     prompt,
+    workingDirectory: workingDir,
     yolo: true,
   }).then(async result => {
     const { approvals } = await import('../db/store.js');

@@ -15,6 +15,12 @@ import {
   AlertCircle,
 } from '../components/ui/icons';
 
+interface Company {
+  id: string;
+  name: string;
+  workingDirectory?: string;
+}
+
 interface Task {
   id: string;
   title: string;
@@ -37,6 +43,7 @@ export const TasksPage: React.FC = () => {
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [newTask, setNewTask] = useState({ title: '', description: '', priority: 'medium', agentId: '' });
@@ -46,12 +53,14 @@ export const TasksPage: React.FC = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      const [tasksData, agentsData] = await Promise.all([
+      const [tasksData, agentsData, companiesData] = await Promise.all([
         api.getTasks(),
         api.getAgents(),
+        fetch('/api/companies').then(r => r.json()),
       ]);
       setTasks(Array.isArray(tasksData) ? tasksData : []);
       setAgents(Array.isArray(agentsData) ? agentsData : []);
+      setCompanies(companiesData.data || []);
     } catch (err: any) {
       setError(err.message);
     } finally {

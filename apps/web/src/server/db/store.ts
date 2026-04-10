@@ -11,6 +11,7 @@ export interface Company {
   id: string;
   name: string;
   description?: string;
+  workingDirectory?: string;
   createdAt: string;
   updatedAt: string;
 }
