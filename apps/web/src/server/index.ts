@@ -34,12 +34,12 @@ const PORT = process.env.PORT || 3100;
 
 // Catch ALL unhandled errors to prevent silent crashes
 process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error.message);
+  console.error('[ERROR] Uncaught Exception:', error.message);
   // Don't exit — keep server running
 });
 
 process.on('unhandledRejection', (reason) => {
-  console.error('❌ Unhandled Rejection:', reason);
+  console.error('[ERROR] Unhandled Rejection:', reason);
   // Don't exit — keep server running
 });
 
@@ -126,10 +126,10 @@ async function start() {
     // Handle server errors
     server.on('error', (error: any) => {
       if (error.code === 'EADDRINUSE') {
-        console.error(`❌ Port ${PORT} is already in use`);
+        console.error(`[ERROR] Port ${PORT} is already in use`);
         process.exit(1);
       } else {
-        console.error('❌ Server error:', error.message);
+        console.error('[ERROR] Server error:', error.message);
       }
     });
 
