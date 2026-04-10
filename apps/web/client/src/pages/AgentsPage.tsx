@@ -1,311 +1,264 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../services/api';
 
-interface Company {
-  id: string;
-  name: string;
-}
-
 interface Agent {
   id: string;
   name: string;
-  companyId: string;
   role: string;
+  companyId: string;
   status: string;
-  lastActivity: string;
-  approvalMode: string;
-  outputFormat: string;
+  skills?: string[];
+}
+
+interface Heartbeat {
+  id: string;
+  agentId: string;
+  status: string;
+  lastBeat: string | null;
+  enabled: boolean;
+  schedule?: number;
 }
 
 export const AgentsPage: React.FC = () => {
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
+  const [heartbeats, setHeartbeats] = useState<Heartbeat[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [companyFilter, setCompanyFilter] = useState('');
-  const [formName, setFormName] = useState('');
-  const [formCompanyId, setFormCompanyId] = useState('');
-  const [formRole, setFormRole] = useState('worker');
-  const [formApprovalMode, setFormApprovalMode] = useState('yolo');
-  const [formOutputFormat, setFormOutputFormat] = useState('json');
-  const [submitting, setSubmitting] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [newAgent, setNewAgent] = useState({ name: '', role: '' });
 
   const fetchData = useCallback(async () => {
-    try {
-      const [agentsData, companiesData] = await Promise.all([
-        api.getAgents(),
-        api.getCompanies(),
-      ]);
-      setAgents(agentsData);
-      setCompanies(companiesData);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    const [agentsData, heartbeatsData] = await Promise.all([
+      api.getAgents(),
+      api.getHeartbeats(),
+    ]);
+    setAgents(agentsData);
+    setHeartbeats(heartbeatsData);
+    setLoading(false);
   }, []);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  const resetForm = () => {
-    setFormName('');
-    setFormCompanyId('');
-    setFormRole('worker');
-    setFormApprovalMode('yolo');
-    setFormOutputFormat('json');
-    setEditingId(null);
-    setShowModal(false);
+  const handleHire = async () => {
+    if (!newAgent.name.trim() || !newAgent.role) return;
+    await api.hireAgent({
+      name: newAgent.name,
+      role: newAgent.role,
+      companyId: '',
+      status: 'idle',
+    });
+    setNewAgent({ name: '', role: '' });
+    setShowForm(false);
+    fetchData();
   };
 
-  const openCreate = () => {
-    resetForm();
-    if (companies.length === 1) setFormCompanyId(companies[0].id);
-    setShowModal(true);
+  const getHeartbeatInfo = (agentId: string) => {
+    const hb = heartbeats.find(h => h.agentId === agentId);
+    if (!hb) return { status: 'error', lastBeat: null, enabled: false };
+    return hb;
   };
 
-  const openEdit = (agent: Agent) => {
-    setFormName(agent.name);
-    setFormCompanyId(agent.companyId);
-    setFormRole(agent.role);
-    setFormApprovalMode(agent.approvalMode);
-    setFormOutputFormat(agent.outputFormat);
-    setEditingId(agent.id);
-    setShowModal(true);
+  const roleIcons: Record<string, string> = {
+    'ceo': '👔',
+    'cto': '💻',
+    'senior-dev': '🔧',
+    'frontend': '🎨',
+    'qa': '🧪',
+    'devops': '⚙️',
+    'marketing': '📢',
+    'product': '📊',
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      if (editingId) {
-        await api.updateAgent(editingId, {
-          name: formName,
-          companyId: formCompanyId,
-          role: formRole,
-          approvalMode: formApprovalMode,
-          outputFormat: formOutputFormat,
-        });
-      } else {
-        await api.createAgent({
-          name: formName,
-          companyId: formCompanyId,
-          role: formRole,
-          status: 'idle',
-          approvalMode: formApprovalMode,
-          outputFormat: formOutputFormat,
-        });
-      }
-      resetForm();
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
+  const roleLabels: Record<string, string> = {
+    'ceo': 'CEO',
+    'cto': 'CTO',
+    'senior-dev': 'Senior Dev',
+    'frontend': 'Frontend',
+    'qa': 'QA Engineer',
+    'devops': 'DevOps',
+    'marketing': 'Marketing',
+    'product': 'Product',
   };
 
-  const handlePause = async (id: string) => {
-    try {
-      await api.updateAgent(id, { status: 'idle' });
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      await api.deleteAgent(id);
-      setDeleteConfirmId(null);
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
-  const getCompanyName = (companyId: string) => {
-    const c = companies.find((co) => co.id === companyId);
-    return c ? c.name : 'Unknown';
-  };
-
-  const filteredAgents = companyFilter ? agents.filter((a) => a.companyId === companyFilter) : agents;
-
-  const statusBadge = (status: string) => {
-    const map: Record<string, string> = {
-      running: 'badge-success',
-      idle: 'badge-warning',
-      error: 'badge-error',
-      paused: 'badge-neutral',
-    };
-    return <span className={`badge ${map[status] || 'badge-neutral'}`}>{status}</span>;
-  };
-
-  const timeAgo = (dateStr: string) => {
-    const now = new Date();
-    const then = new Date(dateStr);
-    const diff = Math.floor((now.getTime() - then.getTime()) / 1000);
-    if (diff < 60) return `${diff}s ago`;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return `${Math.floor(diff / 86400)}d ago`;
-  };
-
-  if (loading) {
-    return (
-      <div>
-        <div className="main-header"><h1 className="main-header-title">Agents</h1></div>
-        <div className="page-content"><div className="loading"><div className="loading-spinner" /></div></div>
-      </div>
-    );
-  }
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#6b7280' }}>Carregando...</div>;
 
   return (
-    <div>
-      <div className="main-header">
-        <h1 className="main-header-title">Agents</h1>
-        <div className="main-header-actions">
-          <button className="btn btn-primary btn-sm" onClick={openCreate}>+ Hire Agent</button>
+    <div style={{ padding: '24px 32px', maxWidth: 1200, margin: '0 auto' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>🤖 Equipe</h1>
+          <p style={{ color: '#64748b', fontSize: 13, margin: '4px 0 0 0' }}>
+            {agents.length} agentes • {agents.filter(a => a.status === 'running').length} trabalhando
+          </p>
         </div>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          style={{
+            padding: '10px 20px',
+            borderRadius: 8,
+            border: 'none',
+            background: '#3b82f6',
+            color: '#fff',
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          {showForm ? '✕ Cancelar' : '+ Contratar Agente'}
+        </button>
       </div>
-      <div className="page-content">
-        {error && (
-          <div style={{ padding: '12px 16px', background: 'var(--error-bg)', color: 'var(--error)', borderRadius: 'var(--radius-md)', marginBottom: 20 }}>
-            {error}
-            <button className="btn btn-sm btn-secondary" style={{ marginLeft: 12 }} onClick={() => { setError(null); fetchData(); }}>Dismiss</button>
-          </div>
-        )}
 
-        <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <label style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>Filter by company:</label>
-          <select className="form-input" style={{ width: 240 }} value={companyFilter} onChange={(e) => setCompanyFilter(e.target.value)}>
-            <option value="">All Companies</option>
-            {companies.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{filteredAgents.length} agent{filteredAgents.length !== 1 ? 's' : ''}</span>
-        </div>
-
-        <div className="card">
-          <div className="card-body" style={{ padding: 0 }}>
-            {filteredAgents.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-state-icon">🤖</div>
-                <div className="empty-state-title">No agents found</div>
-                <div className="empty-state-description">Hire your first AI agent to get started</div>
-                <button className="btn btn-primary" onClick={openCreate}>+ Hire Agent</button>
-              </div>
-            ) : (
-              <div className="table-container">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Company</th>
-                      <th>Role</th>
-                      <th>Status</th>
-                      <th>Last Activity</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredAgents.map((agent) => (
-                      <tr key={agent.id}>
-                        <td><strong>{agent.name}</strong></td>
-                        <td>{getCompanyName(agent.companyId)}</td>
-                        <td>
-                          <span className="badge badge-neutral">{agent.role}</span>
-                        </td>
-                        <td>{statusBadge(agent.status)}</td>
-                        <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{agent.lastActivity ? timeAgo(agent.lastActivity) : 'Never'}</td>
-                        <td>
-                          <div style={{ display: 'flex', gap: 8 }}>
-                            <button className="btn btn-sm btn-secondary" onClick={() => openEdit(agent)}>Edit</button>
-                            {agent.status === 'running' && (
-                              <button className="btn btn-sm btn-secondary" onClick={() => handlePause(agent.id)}>Pause</button>
-                            )}
-                            {deleteConfirmId === agent.id ? (
-                              <>
-                                <button className="btn btn-sm btn-danger" onClick={() => handleDelete(agent.id)}>Confirm</button>
-                                <button className="btn btn-sm btn-secondary" onClick={() => setDeleteConfirmId(null)}>Cancel</button>
-                              </>
-                            ) : (
-                              <button className="btn btn-sm btn-secondary" style={{ color: 'var(--error)' }} onClick={() => setDeleteConfirmId(agent.id)}>Delete</button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+      {/* Hire Form */}
+      {showForm && (
+        <div style={{
+          background: '#1e293b',
+          borderRadius: 12,
+          padding: 24,
+          marginBottom: 24,
+          border: '1px solid #334155',
+        }}>
+          <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>Contratar Novo Agente</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <input
+              type="text"
+              placeholder="Nome do agente"
+              value={newAgent.name}
+              onChange={e => setNewAgent({ ...newAgent, name: e.target.value })}
+              style={{
+                padding: '10px 14px',
+                borderRadius: 8,
+                border: '1px solid #334155',
+                background: '#0f172a',
+                color: '#e2e8f0',
+                fontSize: 14,
+              }}
+            />
+            <select
+              value={newAgent.role}
+              onChange={e => setNewAgent({ ...newAgent, role: e.target.value })}
+              style={{
+                padding: '10px 14px',
+                borderRadius: 8,
+                border: '1px solid #334155',
+                background: '#0f172a',
+                color: '#e2e8f0',
+                fontSize: 14,
+              }}
+            >
+              <option value="">Selecione uma função</option>
+              <option value="ceo">👔 CEO</option>
+              <option value="cto">💻 CTO</option>
+              <option value="senior-dev">🔧 Senior Developer</option>
+              <option value="frontend">🎨 Frontend Developer</option>
+              <option value="qa">🧪 QA Engineer</option>
+              <option value="devops">⚙️ DevOps</option>
+              <option value="marketing">📢 Marketing</option>
+              <option value="product">📊 Product Manager</option>
+            </select>
+            <button
+              onClick={handleHire}
+              disabled={!newAgent.name.trim() || !newAgent.role}
+              style={{
+                padding: '10px 20px',
+                borderRadius: 8,
+                border: 'none',
+                background: (newAgent.name.trim() && newAgent.role) ? '#3b82f6' : '#334155',
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: (newAgent.name.trim() && newAgent.role) ? 'pointer' : 'not-allowed',
+              }}
+            >
+              ✓ Contratar
+            </button>
           </div>
         </div>
+      )}
 
-        {showModal && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={resetForm}>
-            <div className="card" style={{ width: 520, maxWidth: '90%' }} onClick={(e) => e.stopPropagation()}>
-              <div className="card-header">
-                <h2 className="card-title">{editingId ? 'Edit Agent' : 'Hire New Agent'}</h2>
+      {/* Agents Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+        {agents.map(agent => {
+          const hb = getHeartbeatInfo(agent.id);
+          const isRunning = agent.status === 'running';
+          const hbColor = hb.enabled ? (hb.status === 'ok' ? '#22c55e' : '#f59e0b') : '#6b7280';
+
+          return (
+            <div
+              key={agent.id}
+              style={{
+                background: '#1e293b',
+                borderRadius: 12,
+                padding: 20,
+                border: `1px solid ${isRunning ? '#3b82f644' : '#334155'}`,
+              }}
+            >
+              {/* Avatar + Info */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                <div style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  background: `${hbColor}22`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 24,
+                }}>
+                  {roleIcons[agent.role] || '🤖'}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: 15 }}>{agent.name}</div>
+                  <div style={{ color: '#64748b', fontSize: 12 }}>
+                    {roleLabels[agent.role] || agent.role}
+                  </div>
+                </div>
+                <div style={{
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  background: isRunning ? '#3b82f622' : '#334155',
+                  color: isRunning ? '#60a5fa' : '#94a3b8',
+                }}>
+                  {isRunning ? '⚡ Ativo' : '💤 Ocioso'}
+                </div>
               </div>
-              <div className="card-body">
-                <form onSubmit={handleSubmit}>
-                  <div className="form-group">
-                    <label className="form-label">Agent Name</label>
-                    <input className="form-input" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g., Research Assistant" required autoFocus />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Company</label>
-                    <select className="form-input" value={formCompanyId} onChange={(e) => setFormCompanyId(e.target.value)} required>
-                      <option value="">Select company</option>
-                      {companies.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Role</label>
-                    <select className="form-input" value={formRole} onChange={(e) => setFormRole(e.target.value)}>
-                      <option value="ceo">CEO</option>
-                      <option value="manager">Manager</option>
-                      <option value="worker">Worker</option>
-                      <option value="specialist">Specialist</option>
-                    </select>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    <div className="form-group">
-                      <label className="form-label">Approval Mode</label>
-                      <select className="form-input" value={formApprovalMode} onChange={(e) => setFormApprovalMode(e.target.value)}>
-                        <option value="yolo">YOLO (auto-approve)</option>
-                        <option value="human">Human approval</option>
-                        <option value="hybrid">Hybrid</option>
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Output Format</label>
-                      <select className="form-input" value={formOutputFormat} onChange={(e) => setFormOutputFormat(e.target.value)}>
-                        <option value="json">JSON</option>
-                        <option value="text">Text</option>
-                        <option value="markdown">Markdown</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                    <button type="button" className="btn btn-secondary" onClick={resetForm}>Cancel</button>
-                    <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? 'Saving...' : editingId ? 'Update' : 'Hire'}</button>
-                  </div>
-                </form>
+
+              {/* Heartbeat */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                fontSize: 12,
+                color: '#64748b',
+              }}>
+                <div style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: hbColor,
+                }} />
+                <span>
+                  {hb.lastBeat
+                    ? `Último heartbeat: ${new Date(hb.lastBeat).toLocaleTimeString('pt-BR')}`
+                    : 'Nenhum heartbeat ainda'}
+                </span>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })}
       </div>
+
+      {/* Empty state */}
+      {agents.length === 0 && (
+        <div style={{ textAlign: 'center', padding: 60, color: '#64748b' }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🤖</div>
+          <h3 style={{ margin: '0 0 8px 0', color: '#94a3b8' }}>Nenhum agente contratado</h3>
+          <p style={{ margin: 0, fontSize: 14 }}>Clique em "+ Contratar Agente" para montar seu time.</p>
+        </div>
+      )}
     </div>
   );
 };

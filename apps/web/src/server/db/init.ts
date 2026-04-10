@@ -1,13 +1,11 @@
 /**
- * Database initialization function
- * Returns true for now — will be replaced with PostgreSQL + Drizzle later.
+ * Database initialization — loads data from persistent store
  */
 
-export async function initDatabase(): Promise<boolean> {
-  // TODO: Replace with actual PostgreSQL initialization
-  // const db = await connectPostgres(process.env.DATABASE_URL);
-  // await migrate(db);
+import { loadData } from './store.js';
 
-  console.log('[DB] Database initialized (in-memory mode)');
+export async function initDatabase(): Promise<boolean> {
+  const loaded = loadData();
+  console.log('[DB] Database initialized' + (loaded ? ' (data loaded)' : ' (fresh start)'));
   return true;
 }

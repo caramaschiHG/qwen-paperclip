@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Sidebar } from './components/Sidebar';
+import { TooltipProvider } from './components/ui/tooltip';
+import { Layout } from './components/Layout';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { CompaniesPage } from './pages/CompaniesPage';
@@ -8,9 +9,10 @@ import { AgentsPage } from './pages/AgentsPage';
 import { TasksPage } from './pages/TasksPage';
 import { ApprovalsPage } from './pages/ApprovalsPage';
 import { OrgChartPage } from './pages/OrgChartPage';
+import { TaskDetailPage } from './pages/TaskDetailPage';
+import { ActivityPage } from './pages/ActivityPage';
 import { LogsPage } from './pages/LogsPage';
 import { SettingsPage } from './pages/SettingsPage';
-import { api } from './services/api';
 
 function App() {
   const [isOnboarded, setIsOnboarded] = useState<boolean | null>(null);
@@ -22,8 +24,9 @@ function App() {
 
   const checkOnboarding = async () => {
     try {
-      const companies = await api.getCompanies();
-      setIsOnboarded(companies.length > 0);
+      const res = await fetch('/api/companies');
+      const data = await res.json();
+      setIsOnboarded(data.data?.length > 0);
     } catch {
       setIsOnboarded(false);
     } finally {
@@ -37,8 +40,8 @@ function App() {
 
   if (loading) {
     return (
-      <div className="loading">
-        <div className="loading-spinner" />
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="text-sm text-muted-foreground">Loading...</div>
       </div>
     );
   }
@@ -48,24 +51,25 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
-      <div className="app-layout">
-        <Sidebar />
-        <main className="main-content">
-          <Routes>
+    <TooltipProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<Layout />}>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/companies" element={<CompaniesPage />} />
             <Route path="/agents" element={<AgentsPage />} />
             <Route path="/tasks" element={<TasksPage />} />
+            <Route path="/tasks/:id" element={<TaskDetailPage />} />
+            <Route path="/activity" element={<ActivityPage />} />
             <Route path="/approvals" element={<ApprovalsPage />} />
             <Route path="/org-chart" element={<OrgChartPage />} />
             <Route path="/logs" element={<LogsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
-      </div>
-    </BrowserRouter>
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </TooltipProvider>
   );
 }
 

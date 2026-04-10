@@ -24,7 +24,7 @@ router.get('/', (req: Request, res: Response) => {
   }
 
   // Sort newest first
-  list.sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
+  list.sort((a, b) => (b.requestedAt || '').localeCompare(a.requestedAt || ''));
   res.json({ success: true, data: list });
 });
 
@@ -77,6 +77,42 @@ router.post('/:id/reject', (req: Request, res: Response) => {
   approval.comment = comment;
 
   res.json({ success: true, data: approval });
+});
+
+// ── POST /api/approvals — create an approval request ─────────────────
+router.post('/', (req: Request, res: Response) => {
+  const { title, description, taskId, agentId, type, output, error } = req.body as {
+    title?: string;
+    description?: string;
+    taskId?: string;
+    agentId?: string;
+    type?: string;
+    output?: string;
+    error?: string;
+  };
+
+  if (!title) {
+    throw createApiError('Title is required', 400);
+  }
+
+  const now = new Date().toISOString();
+  const approval: Approval = {
+    id: require('uuid').v4(),
+    title,
+    description,
+    agentId: agentId || '',
+    taskId,
+    type: type || 'task_completion',
+    status: 'pending',
+    requestedAt: now,
+    createdAt: now,
+    updatedAt: now,
+    output,
+    error,
+  };
+
+  approvals.set(approval.id, approval);
+  res.status(201).json({ success: true, data: approval });
 });
 
 // Export must be explicitly typed for pnpm workspace compatibility

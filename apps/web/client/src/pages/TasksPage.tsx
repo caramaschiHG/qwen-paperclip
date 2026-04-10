@@ -1,58 +1,57 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-
-interface Agent {
-  id: string;
-  name: string;
-  companyId: string;
-}
-
-interface Company {
-  id: string;
-  name: string;
-}
+import {
+  FileText,
+  CheckCircle2,
+  XCircle,
+  Flag,
+  Clock,
+  Play,
+  Zap,
+  X,
+  RefreshCw,
+  Trash2,
+  AlertCircle,
+} from '../components/ui/icons';
 
 interface Task {
   id: string;
   title: string;
   description: string;
-  agentId: string;
   companyId: string;
+  agentId?: string;
   status: string;
   priority: string;
   createdAt: string;
 }
 
+interface Agent {
+  id: string;
+  name: string;
+  role: string;
+  status: string;
+}
+
 export const TasksPage: React.FC = () => {
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [newTask, setNewTask] = useState({ title: '', description: '', priority: 'medium', agentId: '' });
+  const [filter, setFilter] = useState<string>('all');
   const [error, setError] = useState<string | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [filterCompany, setFilterCompany] = useState('');
-  const [filterAgent, setFilterAgent] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [formTitle, setFormTitle] = useState('');
-  const [formDescription, setFormDescription] = useState('');
-  const [formAgentId, setFormAgentId] = useState('');
-  const [formCompanyId, setFormCompanyId] = useState('');
-  const [formPriority, setFormPriority] = useState('medium');
-  const [assignModalTaskId, setAssignModalTaskId] = useState<string | null>(null);
-  const [assignAgentId, setAssignAgentId] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const [tasksData, agentsData, companiesData] = await Promise.all([
+      const [tasksData, agentsData] = await Promise.all([
         api.getTasks(),
         api.getAgents(),
-        api.getCompanies(),
       ]);
-      setTasks(tasksData);
-      setAgents(agentsData);
-      setCompanies(companiesData);
+      setTasks(Array.isArray(tasksData) ? tasksData : []);
+      setAgents(Array.isArray(agentsData) ? agentsData : []);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -64,273 +63,522 @@ export const TasksPage: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
-  const resetForm = () => {
-    setFormTitle('');
-    setFormDescription('');
-    setFormAgentId('');
-    setFormCompanyId('');
-    setFormPriority('medium');
-    setShowModal(false);
-  };
+  // Auto-clear messages
+  useEffect(() => {
+    if (error || success) {
+      const timer = setTimeout(() => { setError(null); setSuccess(null); }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, success]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
+  const handleCreate = async () => {
+    if (!newTask.title.trim()) return;
     try {
-      const taskData: Record<string, any> = {
-        title: formTitle,
-        description: formDescription,
-        priority: formPriority,
+      setError(null);
+      await api.createTask({
+        title: newTask.title,
+        description: newTask.description,
+        companyId: '',
+        agentId: newTask.agentId || undefined,
+        priority: newTask.priority,
         status: 'pending',
-      };
-      if (formAgentId) taskData.agentId = formAgentId;
-      if (formCompanyId) taskData.companyId = formCompanyId;
-
-      await api.createTask(taskData);
-      resetForm();
+      });
+      setNewTask({ title: '', description: '', priority: 'medium', agentId: '' });
+      setShowForm(false);
+      setSuccess('Tarefa criada com sucesso!');
       fetchData();
     } catch (err: any) {
       setError(err.message);
-    } finally {
-      setSubmitting(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleStart = async (task: Task) => {
+    if (!task.agentId) {
+      setError('Atribua um agente antes de iniciar.');
+      return;
+    }
     try {
-      await api.deleteTask(id);
-      setDeleteConfirmId(null);
+      setError(null);
+      // Use the real execution endpoint
+      const response = await fetch(`/api/tasks/${task.id}/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId: task.agentId }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Failed to start task');
+      }
+      setSuccess(`"${task.title}" enviada para execucao com ${getAgentName(task.agentId)}!`);
       fetchData();
     } catch (err: any) {
       setError(err.message);
     }
   };
 
-  const handleAssign = async (taskId: string) => {
-    if (!assignAgentId) return;
+  const handleComplete = async (task: Task) => {
     try {
-      await api.assignTask(taskId, assignAgentId);
-      setAssignModalTaskId(null);
-      setAssignAgentId('');
+      setError(null);
+      await api.updateTask(task.id, { status: 'completed' });
+      setSuccess(`Tarefa "${task.title}" concluida!`);
       fetchData();
     } catch (err: any) {
       setError(err.message);
     }
   };
 
-  const getAgentName = (agentId: string) => {
-    const a = agents.find((ag) => ag.id === agentId);
-    return a ? a.name : 'Unassigned';
+  const handleDelete = async (taskId: string) => {
+    try {
+      await api.deleteTask(taskId);
+      setSuccess('Tarefa removida.');
+      fetchData();
+    } catch (err: any) {
+      setError(err.message);
+    }
   };
 
-  const getCompanyName = (companyId: string) => {
-    const c = companies.find((co) => co.id === companyId);
-    return c ? c.name : '';
+  const handleAssignAgent = async (task: Task, agentId: string) => {
+    if (!agentId) return;
+    try {
+      setError(null);
+      await api.updateTask(task.id, { agentId });
+      setSuccess(`Agente atribuido: ${agents.find(a => a.id === agentId)?.name}`);
+      fetchData();
+    } catch (err: any) {
+      setError(err.message);
+    }
   };
 
-  const filteredTasks = tasks.filter((t) => {
-    if (filterCompany && t.companyId !== filterCompany) return false;
-    if (filterAgent && t.agentId !== filterAgent) return false;
-    if (filterStatus && t.status !== filterStatus) return false;
-    return true;
-  });
+  const filteredTasks = filter === 'all'
+    ? tasks
+    : tasks.filter(t => t.status === filter);
 
-  const statusBadge = (status: string) => {
-    const map: Record<string, string> = {
-      completed: 'badge-success',
-      running: 'badge-success',
-      pending: 'badge-warning',
-      failed: 'badge-error',
-      cancelled: 'badge-neutral',
-    };
-    return <span className={`badge ${map[status] || 'badge-neutral'}`}>{status}</span>;
+  const groupedTasks = {
+    running: filteredTasks.filter(t => t.status === 'running'),
+    pending: filteredTasks.filter(t => t.status === 'pending'),
+    completed: filteredTasks.filter(t => t.status === 'completed'),
+    failed: filteredTasks.filter(t => t.status === 'failed'),
   };
 
-  const priorityBadge = (priority: string) => {
-    const map: Record<string, string> = {
-      high: 'badge-error',
-      medium: 'badge-warning',
-      low: 'badge-neutral',
-    };
-    return <span className={`badge ${map[priority] || 'badge-neutral'}`}>{priority}</span>;
+  const getAgentName = (agentId?: string) => {
+    return agents.find(a => a.id === agentId)?.name || null;
   };
 
-  const filteredAgentsForAssign = filterCompany ? agents.filter((a) => a.companyId === filterCompany) : agents;
+  const priorityConfig: Record<string, { color: string; label: string; icon: React.ReactNode }> = {
+    high: { color: '#ef4444', label: 'Alta', icon: <Flag size={12} /> },
+    medium: { color: '#f59e0b', label: 'Media', icon: <Flag size={12} /> },
+    low: { color: '#6b7280', label: 'Baixa', icon: <Flag size={12} /> },
+  };
 
-  if (loading) {
-    return (
-      <div>
-        <div className="main-header"><h1 className="main-header-title">Tasks</h1></div>
-        <div className="page-content"><div className="loading"><div className="loading-spinner" /></div></div>
-      </div>
-    );
-  }
+  const statusConfig: Record<string, { color: string; label: string; icon: React.ReactNode }> = {
+    running: { color: '#3b82f6', label: 'Executando', icon: <Zap size={14} /> },
+    pending: { color: '#f59e0b', label: 'Pendente', icon: <Clock size={14} /> },
+    completed: { color: '#22c55e', label: 'Concluida', icon: <CheckCircle2 size={14} /> },
+    failed: { color: '#ef4444', label: 'Falhou', icon: <XCircle size={14} /> },
+  };
+
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#6b7280' }}>Carregando...</div>;
 
   return (
-    <div>
-      <div className="main-header">
-        <h1 className="main-header-title">Tasks</h1>
-        <div className="main-header-actions">
-          <button className="btn btn-primary btn-sm" onClick={() => setShowModal(true)}>+ New Task</button>
+    <div style={{ padding: '24px 32px', maxWidth: 1200, margin: '0 auto' }}>
+      {/* Toast Messages */}
+      {error && (
+        <div style={{
+          padding: '12px 16px',
+          marginBottom: 16,
+          borderRadius: 8,
+          background: '#ef444422',
+          border: '1px solid #ef4444',
+          color: '#ef4444',
+          fontSize: 13,
+          fontWeight: 500,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}>
+          <XCircle size={16} />
+          <span style={{ flex: 1 }}>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 4 }}
+          >
+            <X size={14} />
+          </button>
         </div>
+      )}
+      {success && (
+        <div style={{
+          padding: '12px 16px',
+          marginBottom: 16,
+          borderRadius: 8,
+          background: '#22c55e22',
+          border: '1px solid #22c55e',
+          color: '#22c55e',
+          fontSize: 13,
+          fontWeight: 500,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}>
+          <CheckCircle2 size={16} />
+          <span style={{ flex: 1 }}>{success}</span>
+          <button
+            onClick={() => setSuccess(null)}
+            style={{ background: 'none', border: 'none', color: '#22c55e', cursor: 'pointer', padding: 4 }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <FileText size={24} />
+            Tarefas
+          </h1>
+          <p style={{ color: '#64748b', fontSize: 13, margin: '4px 0 0 0' }}>
+            {tasks.length} total • {groupedTasks.pending.length} pendentes • {groupedTasks.running.length} executando • {groupedTasks.completed.length} concluidas
+          </p>
+        </div>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          style={{
+            padding: '10px 20px',
+            borderRadius: 8,
+            border: 'none',
+            background: '#3b82f6',
+            color: '#fff',
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          {showForm ? 'Cancelar' : '+ Nova Tarefa'}
+        </button>
       </div>
-      <div className="page-content">
-        {error && (
-          <div style={{ padding: '12px 16px', background: 'var(--error-bg)', color: 'var(--error)', borderRadius: 'var(--radius-md)', marginBottom: 20 }}>
-            {error}
-            <button className="btn btn-sm btn-secondary" style={{ marginLeft: 12 }} onClick={() => { setError(null); fetchData(); }}>Dismiss</button>
+
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+        {[
+          { value: 'all', label: 'Todas', count: tasks.length },
+          { value: 'pending', label: 'Pendentes', count: groupedTasks.pending.length },
+          { value: 'running', label: 'Executando', count: groupedTasks.running.length },
+          { value: 'completed', label: 'Concluidas', count: groupedTasks.completed.length },
+          { value: 'failed', label: 'Falhas', count: groupedTasks.failed.length },
+        ].map(f => (
+          <button
+            key={f.value}
+            onClick={() => setFilter(f.value)}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 8,
+              border: '1px solid',
+              borderColor: filter === f.value ? '#3b82f6' : '#334155',
+              background: filter === f.value ? '#1e40af' : 'transparent',
+              color: filter === f.value ? '#60a5fa' : '#94a3b8',
+              fontSize: 13,
+              cursor: 'pointer',
+            }}
+          >
+            {f.label} ({f.count})
+          </button>
+        ))}
+      </div>
+
+      {/* New Task Form */}
+      {showForm && (
+        <div style={{
+          background: '#1e293b',
+          borderRadius: 12,
+          padding: 24,
+          marginBottom: 24,
+          border: '1px solid #334155',
+        }}>
+          <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>Nova Tarefa</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <input
+              type="text"
+              placeholder="Titulo da tarefa"
+              value={newTask.title}
+              onChange={e => setNewTask({ ...newTask, title: e.target.value })}
+              style={{
+                padding: '10px 14px',
+                borderRadius: 8,
+                border: '1px solid #334155',
+                background: '#0f172a',
+                color: '#e2e8f0',
+                fontSize: 14,
+              }}
+            />
+            <textarea
+              placeholder="Descricao (opcional)"
+              value={newTask.description}
+              onChange={e => setNewTask({ ...newTask, description: e.target.value })}
+              rows={3}
+              style={{
+                padding: '10px 14px',
+                borderRadius: 8,
+                border: '1px solid #334155',
+                background: '#0f172a',
+                color: '#e2e8f0',
+                fontSize: 14,
+                resize: 'vertical',
+              }}
+            />
+            <div style={{ display: 'flex', gap: 12 }}>
+              <select
+                value={newTask.priority}
+                onChange={e => setNewTask({ ...newTask, priority: e.target.value })}
+                style={{
+                  flex: 1,
+                  padding: '10px 14px',
+                  borderRadius: 8,
+                  border: '1px solid #334155',
+                  background: '#0f172a',
+                  color: '#e2e8f0',
+                  fontSize: 14,
+                }}
+              >
+                <option value="low">Baixa</option>
+                <option value="medium">Media</option>
+                <option value="high">Alta</option>
+              </select>
+              <select
+                value={newTask.agentId}
+                onChange={e => setNewTask({ ...newTask, agentId: e.target.value })}
+                style={{
+                  flex: 1,
+                  padding: '10px 14px',
+                  borderRadius: 8,
+                  border: '1px solid #334155',
+                  background: '#0f172a',
+                  color: '#e2e8f0',
+                  fontSize: 14,
+                }}
+              >
+                <option value="">Sem agente</option>
+                {agents.map(a => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={handleCreate}
+              disabled={!newTask.title.trim()}
+              style={{
+                padding: '10px 20px',
+                borderRadius: 8,
+                border: 'none',
+                background: newTask.title.trim() ? '#3b82f6' : '#334155',
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: newTask.title.trim() ? 'pointer' : 'not-allowed',
+              }}
+            >
+              Criar Tarefa
+            </button>
           </div>
-        )}
-
-        <div style={{ marginBottom: 20, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-          <select className="form-input" style={{ width: 200 }} value={filterCompany} onChange={(e) => { setFilterCompany(e.target.value); setFilterAgent(''); }}>
-            <option value="">All Companies</option>
-            {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <select className="form-input" style={{ width: 200 }} value={filterAgent} onChange={(e) => setFilterAgent(e.target.value)}>
-            <option value="">All Agents</option>
-            {filteredAgentsForAssign.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
-          <select className="form-input" style={{ width: 160 }} value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-            <option value="">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="running">Running</option>
-            <option value="completed">Completed</option>
-            <option value="failed">Failed</option>
-          </select>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''}</span>
         </div>
+      )}
 
-        <div className="card">
-          <div className="card-body" style={{ padding: 0 }}>
-            {filteredTasks.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-state-icon">📋</div>
-                <div className="empty-state-title">No tasks found</div>
-                <div className="empty-state-description">Create a new task to get started</div>
-                <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ New Task</button>
-              </div>
-            ) : (
-              <div className="table-container">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Title</th>
-                      <th>Agent</th>
-                      <th>Status</th>
-                      <th>Priority</th>
-                      <th>Created</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredTasks.map((task) => (
-                      <tr key={task.id}>
-                        <td>
-                          <strong>{task.title}</strong>
-                          {task.description && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{task.description}</div>}
-                        </td>
-                        <td>{getAgentName(task.agentId)}</td>
-                        <td>{statusBadge(task.status)}</td>
-                        <td>{priorityBadge(task.priority)}</td>
-                        <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{new Date(task.createdAt).toLocaleDateString()}</td>
-                        <td>
-                          <div style={{ display: 'flex', gap: 8 }}>
-                            <button className="btn btn-sm btn-secondary" onClick={() => { setAssignModalTaskId(task.id); setAssignAgentId(''); }}>Assign</button>
-                            {deleteConfirmId === task.id ? (
-                              <>
-                                <button className="btn btn-sm btn-danger" onClick={() => handleDelete(task.id)}>Confirm</button>
-                                <button className="btn btn-sm btn-secondary" onClick={() => setDeleteConfirmId(null)}>Cancel</button>
-                              </>
-                            ) : (
-                              <button className="btn btn-sm btn-secondary" style={{ color: 'var(--error)' }} onClick={() => setDeleteConfirmId(task.id)}>Delete</button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Tasks by Status */}
+      {Object.entries(groupedTasks).map(([status, statusTasks]) => {
+        if (statusTasks.length === 0) return null;
+        const config = statusConfig[status];
 
-        {/* Create Task Modal */}
-        {showModal && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={resetForm}>
-            <div className="card" style={{ width: 520, maxWidth: '90%' }} onClick={(e) => e.stopPropagation()}>
-              <div className="card-header">
-                <h2 className="card-title">New Task</h2>
-              </div>
-              <div className="card-body">
-                <form onSubmit={handleSubmit}>
-                  <div className="form-group">
-                    <label className="form-label">Title</label>
-                    <input className="form-input" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="Task title" required autoFocus />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Description</label>
-                    <textarea className="form-input" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder="Task description (optional)" />
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    <div className="form-group">
-                      <label className="form-label">Company</label>
-                      <select className="form-input" value={formCompanyId} onChange={(e) => setFormCompanyId(e.target.value)}>
-                        <option value="">None</option>
-                        {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
+        return (
+          <div key={status} style={{ marginBottom: 24 }}>
+            <h3 style={{
+              fontSize: 14,
+              fontWeight: 600,
+              marginBottom: 12,
+              color: config.color,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}>
+              {config.icon}
+              {config.label} ({statusTasks.length})
+            </h3>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {statusTasks.map(task => {
+                const p = priorityConfig[task.priority] || priorityConfig.medium;
+                const agentName = getAgentName(task.agentId);
+                return (
+                  <div
+                    key={task.id}
+                    style={{
+                      background: '#1e293b',
+                      borderRadius: 10,
+                      padding: 16,
+                      border: `1px solid ${status === 'running' ? '#3b82f633' : '#334155'}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                    }}
+                  >
+                    {/* Priority indicator */}
+                    <div style={{
+                      width: 4,
+                      height: 40,
+                      borderRadius: 2,
+                      background: p.color,
+                    }} />
+
+                    {/* Info */}
+                    <div style={{ flex: 1 }}>
+                      <div
+                        onClick={() => navigate(`/tasks/${task.id}`)}
+                        style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, cursor: 'pointer', color: '#60a5fa' }}
+                      >
+                        {task.title}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>
+                          {agentName ? (
+                            <span style={{ color: '#94a3b8' }}>{agentName}</span>
+                          ) : (
+                            <span style={{ color: '#ef4444', fontStyle: 'italic' }}>Sem agente</span>
+                          )}
+                        </span>
+                        <span>• Prioridade: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{p.icon} {p.label}</span></span>
+                      </div>
+                      {task.description && (
+                        <div style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>
+                          {task.description}
+                        </div>
+                      )}
                     </div>
-                    <div className="form-group">
-                      <label className="form-label">Agent</label>
-                      <select className="form-input" value={formAgentId} onChange={(e) => setFormAgentId(e.target.value)}>
-                        <option value="">Unassigned</option>
-                        {agents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                      </select>
+
+                    {/* Actions */}
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      {status === 'pending' && !task.agentId && (
+                        <select
+                          onChange={e => {
+                            if (e.target.value) {
+                              handleAssignAgent(task, e.target.value);
+                              e.target.value = '';
+                            }
+                          }}
+                          defaultValue=""
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: 6,
+                            border: '1px solid #475569',
+                            background: '#0f172a',
+                            color: '#e2e8f0',
+                            fontSize: 12,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <option value="" disabled>Atribuir agente...</option>
+                          {agents.map(a => (
+                            <option key={a.id} value={a.id}>{a.name}</option>
+                          ))}
+                        </select>
+                      )}
+                      {status === 'pending' && (
+                        <button
+                          onClick={() => handleStart(task)}
+                          disabled={!task.agentId}
+                          style={{
+                            padding: '6px 14px',
+                            borderRadius: 6,
+                            border: 'none',
+                            background: task.agentId ? '#3b82f6' : '#334155',
+                            color: task.agentId ? '#fff' : '#64748b',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: task.agentId ? 'pointer' : 'not-allowed',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                          }}
+                          title={task.agentId ? 'Iniciar tarefa' : 'Atribua um agente primeiro'}
+                        >
+                          <Play size={12} /> Iniciar
+                        </button>
+                      )}
+                      {status === 'running' && (
+                        <button
+                          onClick={() => handleComplete(task)}
+                          style={{
+                            padding: '6px 14px',
+                            borderRadius: 6,
+                            border: 'none',
+                            background: '#22c55e',
+                            color: '#fff',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                          }}
+                        >
+                          <CheckCircle2 size={12} /> Concluir
+                        </button>
+                      )}
+                      {status === 'completed' && (
+                        <CheckCircle2 size={18} color="#22c55e" />
+                      )}
+                      {status === 'failed' && (
+                        <button
+                          onClick={() => handleStart(task)}
+                          style={{
+                            padding: '6px 14px',
+                            borderRadius: 6,
+                            border: '1px solid #ef4444',
+                            background: 'transparent',
+                            color: '#ef4444',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                          }}
+                        >
+                          <RefreshCw size={12} /> Retentar
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDelete(task.id)}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: 6,
+                          border: 'none',
+                          background: 'transparent',
+                          color: '#64748b',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Priority</label>
-                    <select className="form-input" value={formPriority} onChange={(e) => setFormPriority(e.target.value)}>
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                    </select>
-                  </div>
-                  <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                    <button type="button" className="btn btn-secondary" onClick={resetForm}>Cancel</button>
-                    <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? 'Creating...' : 'Create Task'}</button>
-                  </div>
-                </form>
-              </div>
+                );
+              })}
             </div>
           </div>
-        )}
+        );
+      })}
 
-        {/* Assign Modal */}
-        {assignModalTaskId && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={() => setAssignModalTaskId(null)}>
-            <div className="card" style={{ width: 400, maxWidth: '90%' }} onClick={(e) => e.stopPropagation()}>
-              <div className="card-header">
-                <h2 className="card-title">Assign Task</h2>
-              </div>
-              <div className="card-body">
-                <div className="form-group">
-                  <label className="form-label">Select Agent</label>
-                  <select className="form-input" value={assignAgentId} onChange={(e) => setAssignAgentId(e.target.value)} autoFocus>
-                    <option value="">Choose an agent</option>
-                    {agents.map((a) => <option key={a.id} value={a.id}>{a.name} ({getCompanyName(a.companyId)})</option>)}
-                  </select>
-                </div>
-                <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                  <button className="btn btn-secondary" onClick={() => setAssignModalTaskId(null)}>Cancel</button>
-                  <button className="btn btn-primary" onClick={() => handleAssign(assignModalTaskId)} disabled={!assignAgentId}>Assign</button>
-                </div>
-              </div>
-            </div>
+      {/* Empty state */}
+      {tasks.length === 0 && (
+        <div style={{ textAlign: 'center', padding: 60, color: '#64748b' }}>
+          <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center', color: '#94a3b8' }}>
+            <FileText size={48} />
           </div>
-        )}
-      </div>
+          <h3 style={{ margin: '0 0 8px 0', color: '#94a3b8' }}>Nenhuma tarefa</h3>
+          <p style={{ margin: 0, fontSize: 14 }}>Clique em "+ Nova Tarefa" para comecar.</p>
+        </div>
+      )}
     </div>
   );
 };

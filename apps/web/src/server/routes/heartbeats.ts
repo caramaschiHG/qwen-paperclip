@@ -34,24 +34,24 @@ router.get('/:id', (req: Request, res: Response) => {
 
 // ── POST /api/heartbeats — create a heartbeat ────────────────────────
 router.post('/', (req: Request, res: Response) => {
-  const { agentId, status, message } = req.body as {
-    agentId?: string;
-    status?: Heartbeat['status'];
-    message?: string;
-  };
+  const body = req.body as Record<string, any>;
 
+  // Accept both frontend (schedule, maxRetries, enabled) and backend (status, message) formats
+  const agentId = body.agentId || body.agent_id;
+  
   if (!agentId) {
     throw createApiError('agentId is required', 400);
-  }
-  if (!agents.has(agentId)) {
-    throw createApiError('Agent not found', 404);
   }
 
   const heartbeat: Heartbeat = {
     id: uuidv4(),
     agentId,
-    status: status ?? 'ok',
-    message,
+    status: body.status ?? 'ok',
+    message: body.message || '',
+    schedule: body.schedule ?? body.interval,
+    maxRetries: body.maxRetries ?? 3,
+    enabled: body.enabled !== undefined ? body.enabled : true,
+    lastBeat: null,
     timestamp: new Date().toISOString(),
   };
 
